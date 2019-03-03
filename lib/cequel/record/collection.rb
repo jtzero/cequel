@@ -472,6 +472,19 @@ module Cequel
       NON_ATOMIC_MUTATORS
         .each { |method| undef_method(method) if method_defined? method }
 
+      def to_s
+        (__getobj__ || {}).inspect
+      end
+
+      def inspect
+        @id_hex ||= begin
+          (Object.new.inspect.split(':0x').last.chomp('>').length).then do |pad_size|
+            "0x%0#{pad_size}x" % (self.object_id << 1)
+          end
+        end
+        "#<#{self.class.name}:#{@id_hex} #{to_s}>"
+      end
+
       #
       # Set the value of a given key
       #
