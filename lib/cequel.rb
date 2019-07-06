@@ -27,14 +27,19 @@ require 'cequel/record'
 #
 module Cequel
   extend Cequel::Uuids
-  #
-  # Get a handle to a keyspace
-  #
-  # @param (see Metal::Keyspace#initialize)
-  # @option (see Metal::Keyspace#initialize)
-  # @return [Metal::Keyspace] a handle to a keyspace
-  #
-  def self.connect(configuration = nil)
-    Metal::Keyspace.new(configuration || {})
+  class << self
+    def establish_connection(configuration)
+      Record.establish_connection(configuration)
+    end
+    #
+    # Get a handle to a keyspace
+    #
+    # @param (see Metal::Keyspace#initialize)
+    # @option (see Metal::Keyspace#initialize)
+    # @return [Metal::Keyspace] a handle to a keyspace
+    def connect(configuration = {})
+      Metal::Keyspace.new(configuration)
+    end
   end
+
 end

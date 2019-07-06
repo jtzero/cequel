@@ -63,9 +63,35 @@ namespace :cequel do
     puts "Dropped keyspace #{Cequel::Record.connection.name}"
   end
 
+  def sync(clazz)
+    migration_table_names = Set[]
+    if clazz.is_a?(Class)
+      if clazz.ancestors.include?(Cequel::Record) &&
+          !migration_table_names.include?(clazz.table_name.to_sym)
+        clazz.synchronize_schema
+        migration_table_names << clazz.table_name.to_sym
+        puts "Synchronized schema for #{clazz.name}"
+      end
+    end
+  end
+
   def migrate
     watch_stack = ActiveSupport::Dependencies::WatchStack.new
 
+    if models_load_file = ENV['CEQUEL_MODELS_LOADER_FILE']
+      require models_load_file
+      watch_namespaces = ["Object"]
+      Cequel::Record.descendants.each do |clazz|
+        watch_namespaces << clazz
+        watch_stack.watch_namespaces(watch_namespaces)
+        sync(clazz)
+      end
+    else
+      load_app_models(watch_stack)
+    end
+  end
+
+  def load_app_models(watch_stack)
     migration_table_names = Set[]
     project_root = defined?(Rails) ? Rails.root : Dir.pwd
     models_dir_path = "#{File.expand_path('app/models', project_root)}/"
@@ -89,14 +115,7 @@ namespace :cequel do
           clazz = class_name.constantize
         rescue LoadError, NameError, RuntimeError
         else
-          if clazz.is_a?(Class)
-            if clazz.ancestors.include?(Cequel::Record) &&
-                !migration_table_names.include?(clazz.table_name.to_sym)
-              clazz.synchronize_schema
-              migration_table_names << clazz.table_name.to_sym
-              puts "Synchronized schema for #{class_name}"
-            end
-          end
+          sync(clazz)
         end
         # rubocop:enable HandleExceptions
       end
